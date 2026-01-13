@@ -1,46 +1,28 @@
-async function deleteAccount(){
-    if(!requireLogin()) return;
+export default async function handler(req, res) {
+    if (req.method !== "POST") {
+        return res.status(405).json({ error: "Method not allowed" });
+    }
 
-    const confirmDelete = confirm(
-        "⚠️ This will permanently delete your account.\n\nThis action CANNOT be undone.\n\nDo you want to continue?"
-    );
-    if(!confirmDelete) return;
-
-    try{
-        const resp=await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:update?key=${selectedGame.api_key}`,{
-            method:"POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                idToken: currentToken
-            })
-        });
-
-        const data = await resp.json();
-
-        if(!data.error){
-            const deletedEmail = currentUser;
-
-            // Clear local state
-            currentUser = null;
-            currentToken = null;
-            currentPassword = null;
-
-            updateStatus("✅ Account deleted successfully.", false, "serviceStatus");
-
-            sendCostMessage(
-                `🗑️ Delete Account\n📧 Email: ${deletedEmail}\n⚠️ Account permanently removed`
-            );
-
-            // Optional: redirect or reload
-            // location.reload();
-        } else {
-            updateStatus(
-                `❌ Failed: ${data.error?.message || "Unknown"}`,
-                true,
-                "serviceStatus"
-            );
+    try {
+        if (!process.env.FIREBASE_API_KEY) {
+            throw new Error("Missing FIREBASE_API_KEY");
         }
-    } catch(err){
-        updateStatus(`❌ Error: ${err.message}`, true, "serviceStatus");
+
+        const response = await fetch(
+            `https://identitytoolkit.googleapis.com/v1/accounts:update?key=${selectedGame.api_key}`,
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(req.body)
+            }
+        );
+
+        const data = await response.json();
+        return res.status(200).json(data);
+
+    } catch (err) {
+        return res.status(500).json({
+            error: err.message || "Server crashed"
+        });
     }
 }
